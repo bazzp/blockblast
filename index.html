@@ -1,1 +1,713 @@
-console.log('Happy developing ✨')
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Block Blast Ultimate 🎮</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* MENU GŁÓWNE */
+        .main-menu {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            position: relative;
+        }
+
+        .menu-title {
+            font-size: 4rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 4px 4px 8px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+            text-align: center;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 4px 4px 8px rgba(0,0,0,0.5), 0 0 20px rgba(255,255,255,0.3); }
+            to { text-shadow: 4px 4px 8px rgba(0,0,0,0.5), 0 0 30px rgba(255,255,255,0.5); }
+        }
+
+        .menu-subtitle {
+            font-size: 1.5rem;
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .menu-btn {
+            background: rgba(255,255,255,0.9);
+            border: none;
+            padding: 20px 40px;
+            border-radius: 15px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+            min-width: 250px;
+            text-align: center;
+        }
+
+        .menu-btn:hover {
+            background: white;
+            transform: translateY(-5px);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.3);
+        }
+
+        .menu-btn.primary {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .menu-btn.primary:hover {
+            background: linear-gradient(45deg, #20c997, #28a745);
+        }
+
+        /* USTAWIENIA */
+        .settings-panel {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .settings-content {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        .settings-title {
+            font-size: 2rem;
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .setting-group {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .setting-label {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .theme-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .theme-option {
+            border: 3px solid transparent;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .theme-option.active {
+            border-color: #007bff;
+            transform: scale(1.05);
+        }
+
+        .theme-preview {
+            width: 100%;
+            height: 40px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .theme-classic .theme-preview { background: linear-gradient(45deg, #FF6B6B, #4ECDC4, #45B7D1); }
+        .theme-neon .theme-preview { background: linear-gradient(45deg, #00ff88, #ff0088, #00ffff); }
+        .theme-sunset .theme-preview { background: linear-gradient(45deg, #ff7e5f, #feb47b, #fa709a); }
+        .theme-ocean .theme-preview { background: linear-gradient(45deg, #2193b0, #6dd5ed, #108dc7); }
+        .theme-forest .theme-preview { background: linear-gradient(45deg, #134e5e, #71b280, #2d5016); }
+
+        .board-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .board-option {
+            border: 3px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .board-option.active {
+            border-color: #007bff;
+            background: #e3f2fd;
+        }
+
+        .board-preview {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 10px;
+            border: 2px solid #333;
+            border-radius: 5px;
+            position: relative;
+            background: #f8f9fa;
+        }
+
+        .board-8x8 .board-preview::after {
+            content: '8×8';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+            color: #333;
+        }
+
+        .board-10x10 .board-preview::after {
+            content: '10×10';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+            color: #333;
+        }
+
+        .board-6x6 .board-preview::after {
+            content: '6×6';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+            color: #333;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .volume-slider {
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #007bff;
+            cursor: pointer;
+        }
+
+        .settings-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #0056b3;
+        }
+
+        .btn.secondary {
+            background: #6c757d;
+        }
+
+        .btn.secondary:hover {
+            background: #545b62;
+        }
+
+        /* GRA */
+        .game-container {
+            display: none;
+            padding: 20px;
+            min-height: 100vh;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .game-content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .score-board {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            flex: 1;
+        }
+
+        .score, .powerup-count {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .game-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .sound-toggle {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sound-toggle.muted {
+            background: #dc3545;
+        }
+
+        .game-area {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .main-board {
+            border: 3px solid #333;
+            border-radius: 10px;
+            background: #fff;
+            position: relative;
+        }
+
+        .pieces-area {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .piece-container {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: #f8f9fa;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .piece-container:hover {
+            transform: scale(1.05);
+            border-color: #007bff;
+        }
+
+        .piece-container.selected {
+            border-color: #28a745;
+            background: #e8f5e8;
+        }
+
+        .piece-container.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .piece-container.special {
+            border-color: #ffd700;
+            background: linear-gradient(45deg, #fff8dc, #fffacd);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+
+        .powerup-indicator {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ffd700;
+            color: #333;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .powerups-panel {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .powerup-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .powerup-btn:hover {
+            background: #1e7e34;
+            transform: translateY(-2px);
+        }
+
+        .powerup-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .particles {
+            position: absolute;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        @keyframes explode {
+            0% { transform: scale(1) rotate(0deg); opacity: 1; }
+            100% { transform: scale(2) rotate(360deg); opacity: 0; }
+        }
+
+        .particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: explode 1s ease-out forwards;
+        }
+
+        @keyframes scoreFloat {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-50px); opacity: 0; }
+        }
+
+        .score-popup {
+            position: absolute;
+            font-weight: bold;
+            font-size: 20px;
+            color: #FFD700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            animation: scoreFloat 1s ease-out forwards;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .game-over {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .game-over-content {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .difficulty-indicator {
+            background: #17a2b8;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .difficulty-easy { background: #28a745; }
+        .difficulty-normal { background: #ffc107; color: #333; }
+        .difficulty-hard { background: #dc3545; }
+
+        @media (max-width: 768px) {
+            .menu-title {
+                font-size: 2.5rem;
+            }
+
+            .game-area {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .pieces-area {
+                flex-direction: row;
+                justify-content: center;
+            }
+
+            .game-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .theme-grid, .board-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+<!-- MENU GŁÓWNE -->
+<div class="main-menu" id="mainMenu">
+    <h1 class="menu-title">🎮 BLOCK BLAST</h1>
+    <p class="menu-subtitle">Ultimate Edition by @bazzp</p>
+
+    <div class="menu-buttons">
+        <button class="menu-btn primary" onclick="showGame()">
+            🚀 NOWA GRA
+        </button>
+        <button class="menu-btn" onclick="showSettings()">
+            ⚙️ USTAWIENIA
+        </button>
+        <button class="menu-btn" onclick="showHighScores()">
+            🏆 NAJLEPSZE WYNIKI
+        </button>
+        <button class="menu-btn" onclick="showAbout()">
+            ℹ️ O GRZE
+        </button>
+    </div>
+</div>
+
+<!-- PANEL USTAWIEŃ -->
+<div class="settings-panel" id="settingsPanel">
+    <div class="settings-content">
+        <h2 class="settings-title">⚙️ Ustawienia</h2>
+
+        <div class="setting-group">
+            <label class="setting-label">🎨 Motyw kolorystyczny</label>
+            <div class="theme-grid">
+                <div class="theme-option theme-classic active" data-theme="classic">
+                    <div class="theme-preview"></div>
+                    <div>Klasyczny</div>
+                </div>
+                <div class="theme-option theme-neon" data-theme="neon">
+                    <div class="theme-preview"></div>
+                    <div>Neon</div>
+                </div>
+                <div class="theme-option theme-sunset" data-theme="sunset">
+                    <div class="theme-preview"></div>
+                    <div>Zachód</div>
+                </div>
+                <div class="theme-option theme-ocean" data-theme="ocean">
+                    <div class="theme-preview"></div>
+                    <div>Ocean</div>
+                </div>
+                <div class="theme-option theme-forest" data-theme="forest">
+                    <div class="theme-preview"></div>
+                    <div>Las</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label">📐 Rozmiar planszy</label>
+            <div class="board-grid">
+                <div class="board-option board-6x6" data-size="6">
+                    <div class="board-preview"></div>
+                    <div><strong>6×6</strong></div>
+                    <div class="difficulty-indicator difficulty-easy">Łatwy</div>
+                </div>
+                <div class="board-option board-8x8 active" data-size="8">
+                    <div class="board-preview"></div>
+                    <div><strong>8×8</strong></div>
+                    <div class="difficulty-indicator difficulty-normal">Normalny</div>
+                </div>
+                <div class="board-option board-10x10" data-size="10">
+                    <div class="board-preview"></div>
+                    <div><strong>10×10</strong></div>
+                    <div class="difficulty-indicator difficulty-hard">Trudny</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <label class="setting-label">🔊 Dźwięk</label>
+            <div class="volume-control">
+                <span>🔇</span>
+                <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="70">
+                <span>🔊</span>
+            </div>
+        </div>
+
+        <div class="settings-buttons">
+            <button class="btn" onclick="applySettings()">✅ Zastosuj</button>
+            <button class="btn secondary" onclick="hideSettings()">❌ Anuluj</button>
+        </div>
+    </div>
+</div>
+
+<!-- GRA -->
+<div class="game-container" id="gameContainer">
+    <div class="game-content">
+        <div class="game-header">
+            <div class="score-board">
+                <div class="score">Wynik: <span id="score">0</span></div>
+                <div class="powerup-count">💎 <span id="bombCount">3</span></div>
+                <div class="powerup-count">🌟 <span id="starCount">2</span></div>
+                <div class="powerup-count">🔥 <span id="destroyCount">1</span></div>
+                <div class="difficulty-indicator" id="difficultyIndicator">8×8 Normalny</div>
+            </div>
+
+            <div class="game-controls">
+                <button class="sound-toggle" id="soundToggle" onclick="toggleSound()" title="Dźwięk ON/OFF">
+                    🔊
+                </button>
+                <button class="btn" onclick="pauseGame()">⏸️ Pauza</button>
+                <button class="btn secondary" onclick="showMainMenu()">🏠 Menu</button>
+            </div>
+        </div>
+
+        <div class="game-area">
+            <div style="position: relative;">
+                <canvas id="gameBoard" class="main-board"></canvas>
+                <div id="particles" class="particles"></div>
+            </div>
+
+            <div class="pieces-area">
+                <div class="piece-container">
+                    <canvas id="piece1" width="120" height="120"></canvas>
+                </div>
+                <div class="piece-container">
+                    <canvas id="piece2" width="120" height="120"></canvas>
+                </div>
+                <div class="piece-container">
+                    <canvas id="piece3" width="120" height="120"></canvas>
+                </div>
+
+                <div class="powerups-panel">
+                    <h4>Power-upy:</h4>
+                    <button class="powerup-btn" id="bombBtn" onclick="usePowerup('bomb')">
+                        💎 Bomba (3x3)
+                    </button>
+                    <button class="powerup-btn" id="starBtn" onclick="usePowerup('star')">
+                        🌟 Gwiazda (usuń kolor)
+                    </button>
+                    <button class="powerup-btn" id="destroyBtn" onclick="usePowerup('destroy')">
+                        🔥 Niszczyciel (usuń blok)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GAME OVER -->
+<div class="game-over" id="gameOver">
+    <div class="game-over-content">
+        <h2>🎮 Koniec Gry!</h2>
+        <p>Twój wynik: <span id="finalScore">0</span></p>
+        <p>Plansza: <span id="finalBoardSize">8×8</span></p>
+        <div style="margin: 20px 0;">
+            <button class="btn" onclick="restartGame()">🔄 Jeszcze Raz</button>
+            <button class="btn secondary" onclick="showMainMenu()">🏠 Menu Główne</button>
+        </div>
+    </div>
+</div>
+
+<script src="blockblast-ultimate.js"></script>
+</body>
+</html>

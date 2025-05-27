@@ -1,7 +1,150 @@
+// USTAWIENIA GLOBALNE
+const gameSettings = {
+    theme: 'classic',
+    boardSize: 8,
+    soundEnabled: true,
+    volume: 0.7
+};
+
+// Załaduj ustawienia z localStorage
+function loadSettings() {
+    const saved = localStorage.getItem('gameSettings');
+    if (saved) {
+        Object.assign(gameSettings, JSON.parse(saved));
+    }
+}
+
+// ZARZĄDZANIE MENU
+function showMainMenu() {
+    document.getElementById('mainMenu').style.display = 'flex';
+    document.getElementById('gameContainer').style.display = 'none';
+    document.getElementById('settingsPanel').style.display = 'none';
+    document.getElementById('gameOver').style.display = 'none';
+}
+
+function showGame() {
+    document.getElementById('mainMenu').style.display = 'none';
+    document.getElementById('gameContainer').style.display = 'flex';
+
+    // Inicjalizuj grę z aktualnych ustawień
+    if (window.game) {
+        window.game.updateBoardSize(gameSettings.boardSize);
+        window.game.changeTheme(gameSettings.theme);
+        window.game.initGame();
+    } else {
+        initGame();
+    }
+}
+
+function showSettings() {
+    document.getElementById('settingsPanel').style.display = 'flex';
+    loadSettingsUI();
+}
+
+function hideSettings() {
+    document.getElementById('settingsPanel').style.display = 'none';
+}
+
+function showHighScores() {
+    const scores = {
+        6: localStorage.getItem('highScore6') || '0',
+        8: localStorage.getItem('highScore8') || '0',
+        10: localStorage.getItem('highScore10') || '0'
+    };
+
+    alert(`🏆 NAJLEPSZE WYNIKI:\n\n6×6 (Łatwy): ${scores[6]} pkt\n8×8 (Normalny): ${scores[8]} pkt\n10×10 (Trudny): ${scores[10]} pkt\n\n🎮 Zagraj więcej aby pobić rekordy!`);
+}
+
+function showAbout() {
+    alert(`🎮 BLOCK BLAST ULTIMATE\n\n✨ Wersja: 3.0 Premium\n👨‍💻 Autor: @${document.querySelector('.menu-subtitle').textContent.split('@')[1] || 'bazzp'}\n📅 Data: 2025-05-27\n\n🎯 CEL GRY:\nUmieszczaj klocki na planszy i usuwaj pełne linie!\n\n🚀 FUNKCJE:\n• 3 rozmiary planszy (6×6, 8×8, 10×10)\n• 5 motywów kolorystycznych\n• Power-upy i specjalne klocki\n• Efekty dźwiękowe i wizualne\n• System najlepszych wyników\n• Responsywny design\n\n🎵 STEROWANIE:\n• Kliknij klocek → kliknij planszę\n• Używaj power-upów strategicznie\n• Usuwaj pełne rzędy i kolumny\n\n💎 Powodzenia!`);
+}
+
+function pauseGame() {
+    if (window.game) {
+        alert('⏸️ GRA WSTRZYMANA!\n\n🎮 Kliknij OK aby kontynuować...');
+    }
+}
+
+function restartGame() {
+    document.getElementById('gameOver').style.display = 'none';
+    if (window.game) {
+        window.game.initGame();
+    }
+}
+
+// USTAWIENIA
+function loadSettingsUI() {
+    // Załaduj aktualny motyw
+    document.querySelectorAll('.theme-option').forEach(option => {
+        option.classList.remove('active');
+        if (option.dataset.theme === gameSettings.theme) {
+            option.classList.add('active');
+        }
+    });
+
+    // Załaduj aktualny rozmiar planszy
+    document.querySelectorAll('.board-option').forEach(option => {
+        option.classList.remove('active');
+        if (parseInt(option.dataset.size) === gameSettings.boardSize) {
+            option.classList.add('active');
+        }
+    });
+
+    // Załaduj głośność
+    document.getElementById('volumeSlider').value = gameSettings.volume * 100;
+
+    // Event listenery dla ustawień
+    document.querySelectorAll('.theme-option').forEach(option => {
+        option.onclick = () => {
+            document.querySelectorAll('.theme-option').forEach(o => o.classList.remove('active'));
+            option.classList.add('active');
+        };
+    });
+
+    document.querySelectorAll('.board-option').forEach(option => {
+        option.onclick = () => {
+            document.querySelectorAll('.board-option').forEach(o => o.classList.remove('active'));
+            option.classList.add('active');
+        };
+    });
+}
+
+function applySettings() {
+    // Zapisz motyw
+    const selectedTheme = document.querySelector('.theme-option.active');
+    if (selectedTheme) {
+        gameSettings.theme = selectedTheme.dataset.theme;
+    }
+
+    // Zapisz rozmiar planszy
+    const selectedBoard = document.querySelector('.board-option.active');
+    if (selectedBoard) {
+        gameSettings.boardSize = parseInt(selectedBoard.dataset.size);
+    }
+
+    // Zapisz głośność
+    gameSettings.volume = document.getElementById('volumeSlider').value / 100;
+
+    // Zastosuj ustawienia do gry
+    if (window.game) {
+        window.game.changeTheme(gameSettings.theme);
+        window.game.updateBoardSize(gameSettings.boardSize);
+        window.game.soundManager.setVolume(gameSettings.volume);
+    }
+
+    // Zapisz do localStorage
+    localStorage.setItem('gameSettings', JSON.stringify(gameSettings));
+
+    hideSettings();
+    alert('✅ Ustawienia zostały zapisane i zastosowane!');
+}
+
+// SOUND MANAGER
 class SoundManager {
     constructor() {
         this.audioContext = null;
-        this.enabled = true;
+        this.enabled = gameSettings.soundEnabled;
+        this.volume = gameSettings.volume;
         this.initAudio();
     }
 
@@ -20,7 +163,12 @@ class SoundManager {
         }
     }
 
-    playTone(frequency, duration = 0.2, type = 'sine', volume = 0.3) {
+    setVolume(volume) {
+        this.volume = volume;
+        gameSettings.volume = volume;
+    }
+
+    playTone(frequency, duration = 0.2, type = 'sine', volumeMultiplier = 1) {
         if (!this.enabled || !this.audioContext) return;
 
         this.resumeContext();
@@ -34,151 +182,96 @@ class SoundManager {
         oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
         oscillator.type = type;
 
+        const finalVolume = this.volume * volumeMultiplier;
+
         gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(volume, this.audioContext.currentTime + 0.01);
+        gainNode.gain.linearRampToValueAtTime(finalVolume, this.audioContext.currentTime + 0.01);
         gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + duration);
 
         oscillator.start(this.audioContext.currentTime);
         oscillator.stop(this.audioContext.currentTime + duration);
     }
 
-    // 🎵 DŹWIĘKI GRY
-
-    placePiece() {
-        if (!this.enabled) return;
-        // Przyjemny dźwięk postawienia klocka
-        this.playTone(440, 0.1, 'square', 0.2);
-    }
-
+    // Wszystkie dźwięki
+    placePiece() { if (this.enabled) this.playTone(440, 0.1, 'square', 0.6); }
     clearLine() {
         if (!this.enabled) return;
-        // Melodyjny dźwięk usunięcia linii
-        setTimeout(() => this.playTone(523, 0.15, 'sine', 0.4), 0);
-        setTimeout(() => this.playTone(659, 0.15, 'sine', 0.4), 100);
-        setTimeout(() => this.playTone(784, 0.2, 'sine', 0.4), 200);
+        setTimeout(() => this.playTone(523, 0.15, 'sine', 0.8), 0);
+        setTimeout(() => this.playTone(659, 0.15, 'sine', 0.8), 100);
+        setTimeout(() => this.playTone(784, 0.2, 'sine', 0.8), 200);
     }
-
     multiClear(count) {
         if (!this.enabled) return;
-        // Epicki dźwięk za multiple clear
         const notes = [523, 659, 784, 988, 1175];
         for (let i = 0; i < count && i < notes.length; i++) {
-            setTimeout(() => {
-                this.playTone(notes[i], 0.3, 'triangle', 0.5);
-            }, i * 80);
+            setTimeout(() => this.playTone(notes[i], 0.3, 'triangle', 0.8), i * 80);
         }
     }
-
-    bombExplosion() {
-        if (!this.enabled) return;
-        // Wybuchowy dźwięk bomby
-        this.playTone(150, 0.3, 'sawtooth', 0.6);
-        setTimeout(() => this.playTone(100, 0.2, 'sawtooth', 0.4), 100);
-    }
-
+    bombExplosion() { if (this.enabled) this.playTone(150, 0.3, 'sawtooth', 0.8); }
     starEffect() {
         if (!this.enabled) return;
-        // Magiczny dźwięk gwiazdy
         const notes = [440, 554, 659, 831, 1047];
         notes.forEach((note, i) => {
-            setTimeout(() => {
-                this.playTone(note, 0.4, 'triangle', 0.3);
-            }, i * 150);
+            setTimeout(() => this.playTone(note, 0.4, 'triangle', 0.6), i * 150);
         });
     }
-
     rainbowEffect() {
         if (!this.enabled) return;
-        // Tęczowy dźwięk
         const notes = [261, 294, 330, 349, 392, 440, 494, 523];
         notes.forEach((note, i) => {
-            setTimeout(() => {
-                this.playTone(note, 0.2, 'sine', 0.25);
-            }, i * 80);
+            setTimeout(() => this.playTone(note, 0.2, 'sine', 0.5), i * 80);
         });
     }
-
-    selectPiece() {
-        if (!this.enabled) return;
-        // Delikatny klik
-        this.playTone(800, 0.05, 'square', 0.15);
-    }
-
-    cannotPlace() {
-        if (!this.enabled) return;
-        // Dźwięk błędu
-        this.playTone(200, 0.2, 'sawtooth', 0.3);
-        setTimeout(() => this.playTone(150, 0.2, 'sawtooth', 0.3), 100);
-    }
-
+    selectPiece() { if (this.enabled) this.playTone(800, 0.05, 'square', 0.3); }
+    cannotPlace() { if (this.enabled) this.playTone(200, 0.2, 'sawtooth', 0.6); }
     gameOver() {
         if (!this.enabled) return;
-        // Smutny dźwięk końca gry
         const notes = [523, 466, 415, 392, 349, 311, 277, 247];
         notes.forEach((note, i) => {
-            setTimeout(() => {
-                this.playTone(note, 0.4, 'triangle', 0.3);
-            }, i * 200);
+            setTimeout(() => this.playTone(note, 0.4, 'triangle', 0.6), i * 200);
         });
     }
-
     newGame() {
         if (!this.enabled) return;
-        // Radosny dźwięk nowej gry
         const notes = [261, 330, 392, 523];
         notes.forEach((note, i) => {
-            setTimeout(() => {
-                this.playTone(note, 0.3, 'triangle', 0.4);
-            }, i * 100);
+            setTimeout(() => this.playTone(note, 0.3, 'triangle', 0.8), i * 100);
         });
     }
-
-    powerupActivate() {
-        if (!this.enabled) return;
-        // Dźwięk aktywacji power-upa
-        this.playTone(1000, 0.1, 'square', 0.3);
-        setTimeout(() => this.playTone(1200, 0.15, 'square', 0.3), 50);
-    }
-
+    powerupActivate() { if (this.enabled) this.playTone(1000, 0.1, 'square', 0.6); }
     specialPiecePlace() {
         if (!this.enabled) return;
-        // Specjalny dźwięk dla magicznych klocków
-        this.playTone(659, 0.1, 'triangle', 0.3);
-        setTimeout(() => this.playTone(831, 0.1, 'triangle', 0.3), 50);
-        setTimeout(() => this.playTone(1047, 0.15, 'triangle', 0.3), 100);
+        this.playTone(659, 0.1, 'triangle', 0.6);
+        setTimeout(() => this.playTone(831, 0.1, 'triangle', 0.6), 50);
+        setTimeout(() => this.playTone(1047, 0.15, 'triangle', 0.6), 100);
     }
-
-    scoreBonus() {
-        if (!this.enabled) return;
-        // Dźwięk bonusowych punktów
-        this.playTone(831, 0.1, 'sine', 0.25);
-        setTimeout(() => this.playTone(1047, 0.15, 'sine', 0.25), 80);
-    }
+    scoreBonus() { if (this.enabled) this.playTone(831, 0.1, 'sine', 0.5); }
 
     toggle() {
         this.enabled = !this.enabled;
+        gameSettings.soundEnabled = this.enabled;
         return this.enabled;
     }
 }
 
-class BlockBlastPremium {
+// GŁÓWNA KLASA GRY
+class BlockBlastUltimate {
     constructor() {
-        this.BOARD_SIZE = 8;
         this.CELL_SIZE = 60;
         this.board = [];
         this.score = 0;
         this.selectedPiece = null;
         this.pieces = [];
-        this.currentTheme = 'classic';
+        this.currentTheme = gameSettings.theme;
         this.activePowerup = null;
+        this.BOARD_SIZE = gameSettings.boardSize;
 
-        // 🎵 SOUND MANAGER
         this.soundManager = new SoundManager();
 
         this.powerups = {
-            bomb: 3,
-            star: 2,
-            destroy: 1
+            bomb: this.BOARD_SIZE <= 6 ? 5 : this.BOARD_SIZE <= 8 ? 3 : 2,
+            star: this.BOARD_SIZE <= 6 ? 4 : this.BOARD_SIZE <= 8 ? 2 : 1,
+            destroy: this.BOARD_SIZE <= 6 ? 3 : this.BOARD_SIZE <= 8 ? 1 : 1
         };
 
         this.themes = {
@@ -197,8 +290,48 @@ class BlockBlastPremium {
             document.getElementById('piece3')
         ];
 
+        this.updateCanvasSize();
         this.initGame();
         this.setupEventListeners();
+    }
+
+    updateBoardSize(size) {
+        this.BOARD_SIZE = size;
+
+        // Dostosuj power-upy do trudności
+        this.powerups = {
+            bomb: size <= 6 ? 5 : size <= 8 ? 3 : 2,
+            star: size <= 6 ? 4 : size <= 8 ? 2 : 1,
+            destroy: size <= 6 ? 3 : size <= 8 ? 1 : 1
+        };
+
+        this.updateCanvasSize();
+        this.updateDifficultyIndicator();
+        this.initGame();
+    }
+
+    updateCanvasSize() {
+        const canvasSize = this.BOARD_SIZE * this.CELL_SIZE;
+        this.canvas.width = canvasSize;
+        this.canvas.height = canvasSize;
+    }
+
+    updateDifficultyIndicator() {
+        const indicator = document.getElementById('difficultyIndicator');
+        const difficulties = {
+            6: 'Łatwy',
+            8: 'Normalny',
+            10: 'Trudny'
+        };
+
+        const diffClass = {
+            6: 'difficulty-easy',
+            8: 'difficulty-normal',
+            10: 'difficulty-hard'
+        };
+
+        indicator.textContent = `${this.BOARD_SIZE}×${this.BOARD_SIZE} ${difficulties[this.BOARD_SIZE]}`;
+        indicator.className = `difficulty-indicator ${diffClass[this.BOARD_SIZE]}`;
     }
 
     initGame() {
@@ -207,25 +340,25 @@ class BlockBlastPremium {
         this.activePowerup = null;
         this.highlightPosition = null;
 
+        // Reset power-upów z uwzględnieniem trudności
         this.powerups = {
-            bomb: 3,
-            star: 2,
-            destroy: 1
+            bomb: this.BOARD_SIZE <= 6 ? 5 : this.BOARD_SIZE <= 8 ? 3 : 2,
+            star: this.BOARD_SIZE <= 6 ? 4 : this.BOARD_SIZE <= 8 ? 2 : 1,
+            destroy: this.BOARD_SIZE <= 6 ? 3 : this.BOARD_SIZE <= 8 ? 1 : 1
         };
 
         this.updateScore();
         this.updatePowerupCounts();
         this.generateNewPieces();
         this.draw();
-        document.getElementById('gameOver').style.display = 'none';
 
         document.querySelectorAll('.powerup-btn').forEach(btn => {
             btn.style.background = '#28a745';
         });
         this.canvas.style.cursor = 'default';
 
-        // 🎵 DŹWIĘK NOWEJ GRY
         this.soundManager.newGame();
+        this.updateDifficultyIndicator();
     }
 
     setupEventListeners() {
@@ -243,10 +376,6 @@ class BlockBlastPremium {
 
     changeTheme(themeName) {
         this.currentTheme = themeName;
-
-        document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelector(`.theme-${themeName}`).classList.add('active');
-
         this.drawPieces();
         this.draw();
     }
@@ -257,20 +386,45 @@ class BlockBlastPremium {
 
     generateNewPieces() {
         this.pieces = [];
-        const pieceShapes = [
-            [[1]],
-            [[1, 1]], [[1, 1, 1]], [[1, 1, 1, 1]], [[1, 1, 1, 1, 1]],
-            [[1], [1]], [[1], [1], [1]], [[1], [1], [1], [1]],
-            [[1, 1], [1, 1]],
-            [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
-            [[1, 0], [1, 0], [1, 1]], [[1, 1, 1], [1, 0, 0]],
-            [[1, 1], [1, 0], [1, 0]], [[0, 0, 1], [1, 1, 1]],
-            [[1, 1, 1], [0, 1, 0]], [[0, 1], [1, 1], [0, 1]],
-            [[1, 1, 0], [0, 1, 1]], [[0, 1], [1, 1], [1, 0]],
-            [[1, 0, 1], [1, 1, 1]],
-            [[1, 1, 1, 1], [0, 1, 1, 0]],
-            [[1, 0, 0], [1, 1, 0], [0, 1, 1]],
-        ];
+
+        // Różne kształty w zależności od rozmiaru planszy
+        let pieceShapes;
+
+        if (this.BOARD_SIZE <= 6) {
+            // Mniejsze klocki dla małej planszy
+            pieceShapes = [
+                [[1]], [[1, 1]], [[1, 1, 1]],
+                [[1], [1]], [[1], [1], [1]],
+                [[1, 1], [1, 1]],
+                [[1, 0], [1, 1]], [[1, 1], [1, 0]],
+                [[1, 1, 1], [0, 1, 0]]
+            ];
+        } else if (this.BOARD_SIZE <= 8) {
+            // Średnie klocki dla normalnej planszy
+            pieceShapes = [
+                [[1]], [[1, 1]], [[1, 1, 1]], [[1, 1, 1, 1]],
+                [[1], [1]], [[1], [1], [1]], [[1], [1], [1], [1]],
+                [[1, 1], [1, 1]], [[1, 1, 1], [1, 1, 1]],
+                [[1, 0], [1, 0], [1, 1]], [[1, 1, 1], [1, 0, 0]],
+                [[1, 1], [1, 0], [1, 0]], [[0, 0, 1], [1, 1, 1]],
+                [[1, 1, 1], [0, 1, 0]], [[0, 1], [1, 1], [0, 1]],
+                [[1, 1, 0], [0, 1, 1]], [[0, 1], [1, 1], [1, 0]],
+                [[1, 0, 1], [1, 1, 1]]
+            ];
+        } else {
+            // Większe klocki dla trudnej planszy
+            pieceShapes = [
+                [[1]], [[1, 1]], [[1, 1, 1]], [[1, 1, 1, 1]], [[1, 1, 1, 1, 1]],
+                [[1], [1]], [[1], [1], [1]], [[1], [1], [1], [1]], [[1], [1], [1], [1], [1]],
+                [[1, 1], [1, 1]], [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+                [[1, 0], [1, 0], [1, 1]], [[1, 1, 1], [1, 0, 0]],
+                [[1, 1], [1, 0], [1, 0]], [[0, 0, 1], [1, 1, 1]],
+                [[1, 1, 1], [0, 1, 0]], [[0, 1], [1, 1], [0, 1]],
+                [[1, 1, 0], [0, 1, 1]], [[0, 1], [1, 1], [1, 0]],
+                [[1, 0, 1], [1, 1, 1]], [[1, 1, 1, 1], [0, 1, 1, 0]],
+                [[1, 0, 0], [1, 1, 0], [0, 1, 1]]
+            ];
+        }
 
         const colors = this.getCurrentColors();
 
@@ -279,7 +433,9 @@ class BlockBlastPremium {
             const shape = pieceShapes[shapeIndex];
             const color = colors[Math.floor(Math.random() * colors.length)];
 
-            const isSpecial = Math.random() < 0.15;
+            // Szanse na specjalne klocki zależą od trudności
+            const specialChance = this.BOARD_SIZE <= 6 ? 0.20 : this.BOARD_SIZE <= 8 ? 0.15 : 0.10;
+            const isSpecial = Math.random() < specialChance;
             let specialType = null;
 
             if (isSpecial) {
@@ -304,8 +460,6 @@ class BlockBlastPremium {
 
         this.selectedPiece = index;
         this.updatePieceContainers();
-
-        // 🎵 DŹWIĘK WYBORU KLOCKA
         this.soundManager.selectPiece();
     }
 
@@ -359,7 +513,6 @@ class BlockBlastPremium {
             this.pieces[this.selectedPiece].used = true;
             this.selectedPiece = null;
 
-            // 🎵 DŹWIĘK POSTAWIENIA KLOCKA
             if (pieceSpecial) {
                 this.soundManager.specialPiecePlace();
             } else {
@@ -382,7 +535,6 @@ class BlockBlastPremium {
                 this.endGame();
             }
         } else {
-            // 🎵 DŹWIĘK BŁĘDU (nie można postawić)
             this.soundManager.cannotPlace();
         }
     }
@@ -394,7 +546,6 @@ class BlockBlastPremium {
                     this.explodeArea(x, y, 1);
                     this.createParticleExplosion(x * this.CELL_SIZE + this.CELL_SIZE/2,
                         y * this.CELL_SIZE + this.CELL_SIZE/2, '#FFD700');
-                    // 🎵 DŹWIĘK EKSPLOZJI
                     this.soundManager.bombExplosion();
                 }, 1000);
                 break;
@@ -403,7 +554,6 @@ class BlockBlastPremium {
                 setTimeout(() => {
                     this.removeColorBlocks(color);
                     this.createStarEffect();
-                    // 🎵 DŹWIĘK GWIAZDY
                     this.soundManager.starEffect();
                 }, 1000);
                 break;
@@ -411,7 +561,6 @@ class BlockBlastPremium {
             case 'rainbow':
                 setTimeout(() => {
                     this.rainbowEffect(x, y);
-                    // 🎵 DŹWIĘK TĘCZY
                     this.soundManager.rainbowEffect();
                 }, 1000);
                 break;
@@ -486,7 +635,6 @@ class BlockBlastPremium {
         document.querySelectorAll('.powerup-btn').forEach(btn => btn.style.background = '#28a745');
         document.getElementById(`${type}Btn`).style.background = '#dc3545';
 
-        // 🎵 DŹWIĘK AKTYWACJI POWER-UPA
         this.soundManager.powerupActivate();
     }
 
@@ -500,7 +648,6 @@ class BlockBlastPremium {
                     this.createParticleExplosion(x * this.CELL_SIZE + this.CELL_SIZE/2,
                         y * this.CELL_SIZE + this.CELL_SIZE/2, '#FFD700');
                     this.powerups.bomb--;
-                    // 🎵 DŹWIĘK BOMBY
                     this.soundManager.bombExplosion();
                 }
                 break;
@@ -509,7 +656,6 @@ class BlockBlastPremium {
                 if (this.powerups.star > 0 && this.board[y][x] !== 0) {
                     this.removeColorBlocks(this.board[y][x]);
                     this.powerups.star--;
-                    // 🎵 DŹWIĘK GWIAZDY
                     this.soundManager.starEffect();
                 }
                 break;
@@ -524,7 +670,6 @@ class BlockBlastPremium {
                     this.powerups.destroy--;
                     this.updateScore();
                     this.draw();
-                    // 🎵 DŹWIĘK POSTAWIENIA (niszczenie)
                     this.soundManager.placePiece();
                 }
                 break;
@@ -537,7 +682,6 @@ class BlockBlastPremium {
         document.querySelectorAll('.powerup-btn').forEach(btn => btn.style.background = '#28a745');
     }
 
-    // Pozostałe funkcje (createParticleExplosion, createStarEffect, etc.) pozostają bez zmian...
     createParticleExplosion(x, y, color, count = 12) {
         const particleContainer = document.getElementById('particles');
 
@@ -647,8 +791,6 @@ class BlockBlastPremium {
 
         this.score += baseScore;
         this.updateScore();
-
-        // Pokazuj popup z punktami
         this.showScorePopup(baseScore, startX * this.CELL_SIZE, startY * this.CELL_SIZE);
     }
 
@@ -727,7 +869,7 @@ class BlockBlastPremium {
             }
         }
 
-        // 🎵 DŹWIĘKI CZYSZCZENIA LINII
+        // Dźwięki czyszczenia linii
         if (linesCleared > 0) {
             if (linesCleared === 1) {
                 this.soundManager.clearLine();
@@ -768,12 +910,10 @@ class BlockBlastPremium {
 
             if (linesCleared >= 3) {
                 this.powerups.bomb++;
-                // 🎵 BONUS DŹWIĘK
                 this.soundManager.scoreBonus();
             }
             if (linesCleared >= 4) {
                 this.powerups.star++;
-                // 🎵 BONUS DŹWIĘK
                 this.soundManager.scoreBonus();
             }
         }
@@ -802,10 +942,16 @@ class BlockBlastPremium {
     }
 
     endGame() {
+        // Zapisz najlepszy wynik
+        const currentHighScore = parseInt(localStorage.getItem(`highScore${this.BOARD_SIZE}`) || '0');
+        if (this.score > currentHighScore) {
+            localStorage.setItem(`highScore${this.BOARD_SIZE}`, this.score.toString());
+        }
+
         document.getElementById('finalScore').textContent = this.score;
+        document.getElementById('finalBoardSize').textContent = `${this.BOARD_SIZE}×${this.BOARD_SIZE}`;
         document.getElementById('gameOver').style.display = 'flex';
 
-        // 🎵 DŹWIĘK KOŃCA GRY
         this.soundManager.gameOver();
     }
 
@@ -962,26 +1108,15 @@ class BlockBlastPremium {
     }
 }
 
-// Globalne funkcje
+// GLOBALNE FUNKCJE
 let game;
 
 function initGame() {
-    game = new BlockBlastPremium();
+    loadSettings();
+    game = new BlockBlastUltimate();
+    window.game = game;
 }
 
-function resetGame() {
-    game.initGame();
-}
-
-function changeTheme(themeName) {
-    game.changeTheme(themeName);
-}
-
-function usePowerup(type) {
-    game.usePowerup(type);
-}
-
-// 🎵 FUNKCJA TOGGLE DŹWIĘKU
 function toggleSound() {
     const soundBtn = document.getElementById('soundToggle');
     const enabled = game.soundManager.toggle();
@@ -989,10 +1124,18 @@ function toggleSound() {
     soundBtn.textContent = enabled ? '🔊' : '🔇';
     soundBtn.classList.toggle('muted', !enabled);
 
-    // Krótki feedback dźwiękowy przy włączaniu
     if (enabled) {
         setTimeout(() => game.soundManager.selectPiece(), 100);
     }
 }
 
-window.addEventListener('load', initGame);
+function usePowerup(type) {
+    game.usePowerup(type);
+}
+
+// INICJALIZACJA
+window.addEventListener('load', () => {
+    loadSettings();
+    // Pokaż menu główne na start
+    showMainMenu();
+});
