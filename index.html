@@ -89,6 +89,15 @@
             background: linear-gradient(45deg, #20c997, #28a745);
         }
 
+        .menu-btn.resume {
+            background: linear-gradient(45deg, #ffc107, #fd7e14);
+            color: white;
+        }
+
+        .menu-btn.resume:hover {
+            background: linear-gradient(45deg, #fd7e14, #ffc107);
+        }
+
         /* USTAWIENIA */
         .settings-panel {
             display: none;
@@ -107,7 +116,7 @@
             background: white;
             border-radius: 20px;
             padding: 40px;
-            max-width: 600px;
+            max-width: 700px;
             width: 90%;
             max-height: 80vh;
             overflow-y: auto;
@@ -257,6 +266,55 @@
             cursor: pointer;
         }
 
+        .music-controls {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 10px;
+        }
+
+        .music-label {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .music-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .music-btn {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s ease;
+        }
+
+        .music-btn:hover {
+            background: #138496;
+        }
+
+        .music-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .music-status {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            text-align: center;
+        }
+
         .settings-buttons {
             display: flex;
             gap: 15px;
@@ -335,26 +393,6 @@
             display: flex;
             gap: 10px;
             align-items: center;
-        }
-
-        .sound-toggle {
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 18px;
-            transition: all 0.3s ease;
-            width: 50px;
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .sound-toggle.muted {
-            background: #dc3545;
         }
 
         .game-area {
@@ -459,6 +497,10 @@
             position: absolute;
             pointer-events: none;
             z-index: 10;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
         }
 
         @keyframes explode {
@@ -472,6 +514,31 @@
             height: 8px;
             border-radius: 50%;
             animation: explode 1s ease-out forwards;
+        }
+
+        /* EFEKT KRUSZENIA KLOCKÓW - POPRAWIONY */
+        @keyframes crumble {
+            0% {
+                transform: translate(0, 0) scale(1) rotate(0deg);
+                opacity: 1;
+            }
+            50% {
+                transform: translate(var(--dx), var(--dy)) scale(0.8) rotate(180deg);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translate(calc(var(--dx) * 2), calc(var(--dy) * 2)) scale(0.2) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        .crumbling-block {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            animation: crumble 1.2s ease-out forwards;
+            z-index: 20;
         }
 
         @keyframes scoreFloat {
@@ -551,14 +618,24 @@
     </style>
 </head>
 <body>
+<!-- AUDIO TAG DLA MUZYKI TŁA -->
+<audio id="backgroundMusic" loop preload="auto" style="display: none;">
+    <source src="background-music.mp3" type="audio/mpeg">
+    <source src="background-music.ogg" type="audio/ogg">
+    <source src="background-music.wav" type="audio/wav">
+</audio>
+
 <!-- MENU GŁÓWNE -->
 <div class="main-menu" id="mainMenu">
     <h1 class="menu-title">🎮 BLOCK BLAST</h1>
     <p class="menu-subtitle">Ultimate Edition by @bazzp</p>
 
     <div class="menu-buttons">
-        <button class="menu-btn primary" onclick="showGame()">
+        <button class="menu-btn primary" onclick="startNewGame()">
             🚀 NOWA GRA
+        </button>
+        <button class="menu-btn resume" id="resumeBtn" onclick="resumeGame()" style="display: none;">
+            ▶️ WZNÓW GRĘ
         </button>
         <button class="menu-btn" onclick="showSettings()">
             ⚙️ USTAWIENIA
@@ -625,11 +702,22 @@
         </div>
 
         <div class="setting-group">
-            <label class="setting-label">🔊 Dźwięk</label>
+            <label class="setting-label">🔊 Dźwięk i Muzyka</label>
             <div class="volume-control">
                 <span>🔇</span>
                 <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="70">
                 <span>🔊</span>
+            </div>
+
+            <div class="music-controls">
+                <div class="music-label">🎵 Muzyka tła</div>
+                <div class="music-buttons">
+                    <button class="music-btn" id="playMusicBtn" onclick="toggleBackgroundMusic()">▶️ Odtwórz</button>
+                    <button class="music-btn" id="stopMusicBtn" onclick="stopBackgroundMusic()">⏹️ Zatrzymaj</button>
+                </div>
+                <div class="music-status" id="musicStatus">
+                    Umieść plik background-music.mp3 w folderze gry
+                </div>
             </div>
         </div>
 
@@ -653,11 +741,7 @@
             </div>
 
             <div class="game-controls">
-                <button class="sound-toggle" id="soundToggle" onclick="toggleSound()" title="Dźwięk ON/OFF">
-                    🔊
-                </button>
-                <button class="btn" onclick="pauseGame()">⏸️ Pauza</button>
-                <button class="btn secondary" onclick="showMainMenu()">🏠 Menu</button>
+                <button class="btn secondary" onclick="pauseToMenu()">⏸️ Menu</button>
             </div>
         </div>
 
@@ -708,6 +792,6 @@
     </div>
 </div>
 
-<script src="blockblast-ultimate.js"></script>
+<script src="blockblast-ultimate-fixed.js"></script>
 </body>
 </html>
